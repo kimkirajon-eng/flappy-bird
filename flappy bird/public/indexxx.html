@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird - İki Kişilik</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+
+        #app {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Taraf seçim ekranı */
+        #selection-screen {
+            text-align: center;
+            color: white;
+        }
+
+        #selection-screen h1 {
+            font-size: 3rem;
+            margin-bottom: 3rem;
+            text-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .side-buttons {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .side-btn {
+            padding: 2rem 4rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border: 4px solid white;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .side-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(1.1);
+        }
+
+        .side-btn.selected {
+            background: #4CAF50;
+            border-color: #4CAF50;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
+        }
+
+        #start-btn {
+            padding: 1.5rem 3rem;
+            font-size: 1.8rem;
+            font-weight: bold;
+            border: none;
+            background: #ff6b6b;
+            color: white;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            box-shadow: 0 8px 0 #c92a2a;
+            transition: all 0.1s;
+            display: none;
+        }
+
+        #start-btn.show {
+            display: inline-block;
+        }
+
+        #start-btn:hover:not(:disabled) {
+            background: #ff5252;
+        }
+
+        #start-btn:active:not(:disabled) {
+            box-shadow: 0 4px 0 #c92a2a;
+            transform: translateY(4px);
+        }
+
+        #start-btn:disabled {
+            background: #ccc;
+            box-shadow: 0 8px 0 #999;
+            cursor: not-allowed;
+        }
+
+        .waiting-message {
+            margin-top: 2rem;
+            font-size: 1.2rem;
+            color: #ffd700;
+            display: none;
+        }
+
+        .waiting-message.show {
+            display: block;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Oyun ekranı */
+        #game-screen {
+            width: 100vw;
+            height: 100vh;
+            display: none;
+            position: relative;
+        }
+
+        #game-screen.show {
+            display: block;
+        }
+
+        .game-area {
+            width: 100%;
+            height: 50%;
+            position: relative;
+            overflow: hidden;
+            border: 3px solid #333;
+        }
+
+        .game-area.top {
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
+            transform: rotate(180deg);
+        }
+
+        .game-area.bottom {
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .bird {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: #FFD700;
+            border-radius: 50%;
+            border: 3px solid #FFA500;
+            transition: transform 0.1s;
+        }
+
+        .pipe {
+            position: absolute;
+            background: #228B22;
+            border: 3px solid #006400;
+        }
+
+        .score {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 3rem;
+            color: white;
+            text-shadow: 3px 3px 0px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .player-label {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5rem;
+            color: white;
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        #game-over-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        #game-over-screen.show {
+            display: flex;
+        }
+
+        #game-over-screen h2 {
+            font-size: 4rem;
+            color: #ff6b6b;
+            margin-bottom: 2rem;
+            text-shadow: 4px 4px 0px rgba(0,0,0,0.5);
+        }
+
+        #game-over-screen p {
+            font-size: 2rem;
+            color: white;
+            margin-bottom: 3rem;
+        }
+
+        #restart-btn {
+            padding: 1.5rem 3rem;
+            font-size: 1.8rem;
+            font-weight: bold;
+            border: none;
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            box-shadow: 0 8px 0 #2e7d32;
+        }
+
+        #restart-btn:active {
+            box-shadow: 0 4px 0 #2e7d32;
+            transform: translateY(4px);
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Taraf seçim ekranı -->
+        <div id="selection-screen">
+            <h1>🐦 Flappy Bird - İki Kişilik 🐦</h1>
+            <p style="font-size: 1.3rem; margin-bottom: 2rem;">Tarafınızı Seçin:</p>
+            <div class="side-buttons">
+                <button class="side-btn" id="top-btn">Üst</button>
+                <button class="side-btn" id="bottom-btn">Alt</button>
+            </div>
+            <button id="start-btn">Oyuna Başla</button>
+            <p class="waiting-message" id="waiting-msg">Diğer oyuncu hazırlanıyor...</p>
+        </div>
+
+        <!-- Oyun ekranı -->
+        <div id="game-screen">
+            <div class="game-area top" id="top-area">
+                <div class="score" id="top-score">0</div>
+                <div class="player-label">Üst Oyuncu</div>
+            </div>
+            <div class="game-area bottom" id="bottom-area">
+                <div class="score" id="bottom-score">0</div>
+                <div class="player-label">Alt Oyuncu</div>
+            </div>
+        </div>
+
+        <!-- Game Over ekranı -->
+        <div id="game-over-screen">
+            <h2>OYUN BİTTİ!</h2>
+            <p id="winner-text"></p>
+            <button id="restart-btn">Yeniden Oyna</button>
+        </div>
+    </div>
+
+    <script>
+        // Oyun durumu
+        const gameState = {
+            roomId: Math.random().toString(36).substring(7),
+            mySide: null,
+            myReady: false,
+            otherReady: false,
+            gameStarted: false,
+            birds: {
+                top: { y: 250, velocity: 0, score: 0, alive: true },
+                bottom: { y: 250, velocity: 0, score: 0, alive: true }
+            },
+            pipes: {
+                top: [],
+                bottom: []
+            },
+            lastPipeTime: {
+                top: 0,
+                bottom: 0
+            }
+        };
+
+        // Sabitler
+        const GRAVITY = 0.6;
+        const JUMP_STRENGTH = -10;
+        const PIPE_WIDTH = 60;
+        const PIPE_GAP = 180;
+        const PIPE_SPEED = 3;
+        const SPAWN_INTERVAL = 2000;
+
+        // DOM elementleri
+        const selectionScreen = document.getElementById('selection-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const topBtn = document.getElementById('top-btn');
+        const bottomBtn = document.getElementById('bottom-btn');
+        const startBtn = document.getElementById('start-btn');
+        const waitingMsg = document.getElementById('waiting-msg');
+        const restartBtn = document.getElementById('restart-btn');
+        const topArea = document.getElementById('top-area');
+        const bottomArea = document.getElementById('bottom-area');
+        const topScoreEl = document.getElementById('top-score');
+        const bottomScoreEl = document.getElementById('bottom-score');
+        const winnerText = document.getElementById('winner-text');
+
+        // Taraf seçimi
+        topBtn.addEventListener('click', () => selectSide('top'));
+        bottomBtn.addEventListener('click', () => selectSide('bottom'));
+
+        function selectSide(side) {
+            gameState.mySide = side;
+            topBtn.classList.remove('selected');
+            bottomBtn.classList.remove('selected');
+            
+            if (side === 'top') {
+                topBtn.classList.add('selected');
+            } else {
+                bottomBtn.classList.add('selected');
+            }
+            
+            startBtn.classList.add('show');
+        }
+
+        // Oyuna başla butonu
+        startBtn.addEventListener('click', () => {
+            if (!gameState.mySide) return;
+            
+            gameState.myReady = true;
+            startBtn.disabled = true;
+            startBtn.textContent = 'HAZIR!';
+            waitingMsg.classList.add('show');
+            
+            // Simüle edilmiş "diğer oyuncu" için timeout
+            setTimeout(() => {
+                gameState.otherReady = true;
+                startGame();
+            }, 1500);
+        });
+
+        function startGame() {
+            if (!gameState.myReady || !gameState.otherReady) return;
+            
+            selectionScreen.style.display = 'none';
+            gameScreen.classList.add('show');
+            gameState.gameStarted = true;
+            
+            // Oyun döngüsünü başlat
+            requestAnimationFrame(gameLoop);
+            
+            // Boru oluşturma döngüsü
+            setInterval(() => createPipe('top'), SPAWN_INTERVAL);
+            setInterval(() => createPipe('bottom'), SPAWN_INTERVAL);
+        }
+
+        // Kuş kontrolü - tıklama/dokunma
+        topArea.addEventListener('click', () => {
+            if (gameState.mySide === 'top' && gameState.birds.top.alive) {
+                gameState.birds.top.velocity = JUMP_STRENGTH;
+            }
+        });
+
+        bottomArea.addEventListener('click', () => {
+            if (gameState.mySide === 'bottom' && gameState.birds.bottom.alive) {
+                gameState.birds.bottom.velocity = JUMP_STRENGTH;
+            }
+        });
+
+        // Boru oluşturma
+        function createPipe(side) {
+            if (!gameState.gameStarted) return;
+            
+            const area = side === 'top' ? topArea : bottomArea;
+            const areaHeight = area.offsetHeight;
+            const minHeight = 50;
+            const maxHeight = areaHeight - PIPE_GAP - 50;
+            const topPipeHeight = Math.random() * (maxHeight - minHeight) + minHeight;
+            
+            const pipe = {
+                x: area.offsetWidth,
+                topHeight: topPipeHeight,
+                bottomY: topPipeHeight + PIPE_GAP,
+                scored: false,
+                element: null
+            };
+            
+            // Üst boru
+            const topPipe = document.createElement('div');
+            topPipe.className = 'pipe';
+            topPipe.style.width = PIPE_WIDTH + 'px';
+            topPipe.style.height = topPipeHeight + 'px';
+            topPipe.style.left = pipe.x + 'px';
+            topPipe.style.top = '0px';
+            area.appendChild(topPipe);
+            
+            // Alt boru
+            const bottomPipe = document.createElement('div');
+            bottomPipe.className = 'pipe';
+            bottomPipe.style.width = PIPE_WIDTH + 'px';
+            bottomPipe.style.height = (areaHeight - pipe.bottomY) + 'px';
+            bottomPipe.style.left = pipe.x + 'px';
+            bottomPipe.style.bottom = '0px';
+            area.appendChild(bottomPipe);
+            
+            pipe.element = { top: topPipe, bottom: bottomPipe };
+            gameState.pipes[side].push(pipe);
+        }
+
+        // Çarpışma kontrolü
+        function checkCollision(bird, side) {
+            const area = side === 'top' ? topArea : bottomArea;
+            const areaHeight = area.offsetHeight;
+            const birdSize = 40;
+            const birdX = 100;
+            
+            // Tavan ve zemin kontrolü
+            if (bird.y <= 0 || bird.y + birdSize >= areaHeight) {
+                return true;
+            }
+            
+            // Boru çarpışma kontrolü
+            for (const pipe of gameState.pipes[side]) {
+                if (birdX + birdSize > pipe.x && birdX < pipe.x + PIPE_WIDTH) {
+                    if (bird.y < pipe.topHeight || bird.y + birdSize > pipe.bottomY) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+
+        // Oyun döngüsü
+        let lastTime = Date.now();
+        
+        function gameLoop() {
+            if (!gameState.gameStarted) return;
+            
+            const now = Date.now();
+            const deltaTime = now - lastTime;
+            lastTime = now;
+            
+            // Her iki kuşu güncelle
+            ['top', 'bottom'].forEach(side => {
+                const bird = gameState.birds[side];
+                if (!bird.alive) return;
+                
+                // Fizik
+                bird.velocity += GRAVITY;
+                bird.y += bird.velocity;
+                
+                // Çarpışma kontrolü
+                if (checkCollision(bird, side)) {
+                    bird.alive = false;
+                    checkGameOver();
+                }
+                
+                // Kuşu çiz
+                updateBirdPosition(side);
+            });
+            
+            // Boruları güncelle
+            ['top', 'bottom'].forEach(side => {
+                const pipes = gameState.pipes[side];
+                const bird = gameState.birds[side];
+                
+                for (let i = pipes.length - 1; i >= 0; i--) {
+                    const pipe = pipes[i];
+                    pipe.x -= PIPE_SPEED;
+                    
+                    // Skor kontrolü
+                    if (!pipe.scored && pipe.x + PIPE_WIDTH < 100 && bird.alive) {
+                        pipe.scored = true;
+                        bird.score++;
+                        updateScore(side);
+                    }
+                    
+                    // Boru pozisyonunu güncelle
+                    if (pipe.element) {
+                        pipe.element.top.style.left = pipe.x + 'px';
+                        pipe.element.bottom.style.left = pipe.x + 'px';
+                    }
+                    
+                    // Ekrandan çıkan boruları kaldır
+                    if (pipe.x + PIPE_WIDTH < 0) {
+                        if (pipe.element) {
+                            pipe.element.top.remove();
+                            pipe.element.bottom.remove();
+                        }
+                        pipes.splice(i, 1);
+                    }
+                }
+            });
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateBirdPosition(side) {
+            const area = side === 'top' ? topArea : bottomArea;
+            const bird = gameState.birds[side];
+            
+            let birdEl = area.querySelector('.bird');
+            if (!birdEl) {
+                birdEl = document.createElement('div');
+                birdEl.className = 'bird';
+                area.appendChild(birdEl);
+            }
+            
+            birdEl.style.left = '100px';
+            birdEl.style.top = bird.y + 'px';
+            birdEl.style.transform = `rotate(${Math.min(bird.velocity * 3, 90)}deg)`;
+        }
+
+        function updateScore(side) {
+            const scoreEl = side === 'top' ? topScoreEl : bottomScoreEl;
+            scoreEl.textContent = gameState.birds[side].score;
+        }
+
+        function checkGameOver() {
+            const topAlive = gameState.birds.top.alive;
+            const bottomAlive = gameState.birds.bottom.alive;
+            
+            if (!topAlive && !bottomAlive) {
+                endGame('Berabere!');
+            } else if (!topAlive) {
+                endGame('Alt Oyuncu Kazandı! 🎉');
+            } else if (!bottomAlive) {
+                endGame('Üst Oyuncu Kazandı! 🎉');
+            }
+        }
+
+        function endGame(winner) {
+            gameState.gameStarted = false;
+            winnerText.textContent = winner + 
+                `\nÜst: ${gameState.birds.top.score} - Alt: ${gameState.birds.bottom.score}`;
+            gameOverScreen.classList.add('show');
+        }
+
+        restartBtn.addEventListener('click', () => {
+            location.reload();
+        });
+    </script>
+</body>
+</html>
