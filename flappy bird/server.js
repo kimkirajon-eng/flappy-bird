@@ -76,4 +76,4 @@ setInterval(() => {
     io.emit('gameState', { players, pipes, frameCount });
 }, 1000 / 60);
 
-http.listen(3000, '0.0.0.0', () => console.log("Oyun 3000 portunda hazır!"));
+http.listen(PORT, '0.0.0.0', () => console.log(`v17.5 Stok Yonetimi Aktif: http://localhost:${PORT}`));
